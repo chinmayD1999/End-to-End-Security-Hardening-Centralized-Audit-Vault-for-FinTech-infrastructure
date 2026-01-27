@@ -10,7 +10,7 @@ Zero-Trust Storage (LUKS + NBDE + Kerberized NFS)
 Forensics & Monitoring
 
 <p align="center">
-  <img src="images/Architechture.png" width="850">
+  <img src="Architechture.png" width="850">
 </p>
 
 <p align="center">
