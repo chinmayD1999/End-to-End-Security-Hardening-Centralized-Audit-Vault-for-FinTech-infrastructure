@@ -119,7 +119,7 @@ This project encompasses the full lifecycle of designing, deploying, and hardeni
 ### 2.1 High-Level Architecture (The "Control Plane" vs. "Workload Node")
 
 <p align="center">
-  <img src="Architecture.png" width="850">
+  <img src="" width="850">
 </p>
 
 <p align="center">
