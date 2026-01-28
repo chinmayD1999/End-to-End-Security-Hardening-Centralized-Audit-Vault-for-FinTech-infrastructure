@@ -1,4 +1,4 @@
-ABOUT - Designed a Zero Trust, secure and isolated Linux fintech infrastructure, separating the architecture into a Control Plane (Infra) and a Workload Node (Web Client). Enforced strict security controls requiring cryptographic authorization from the central infrastructure for all boot, operational, and data access activities, ensuring complete dependency on the secure core.
+# Designed a Zero Trust, secure and isolated Linux fintech infrastructure, separating the architecture into a Control Plane (Infra) and a Workload Node (Web Client). Enforced strict security controls requiring cryptographic authorization from the central infrastructure for all boot, operational, and data access activities, ensuring complete dependency on the secure core.
 
 ------------------------------------------------------------
 
