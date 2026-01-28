@@ -123,7 +123,32 @@ This project encompasses the full lifecycle of designing, deploying, and hardeni
 </p>
 
 <p align="center">
-  <em>Isolated Zero Trust Architecture for FinTech Environment</em>
+  <em>Zero Trust Isolated Architecture</em>
 </p>
+
+Here is the drafted content for **Section 2.2**, detailing the specific network layer of your infrastructure.
+
+---
+
+### 2.2 Network Topology: The Offline Environment (192.168.70.0/24)
+
+To adhere to the strict "Zero Trust" requirement, the infrastructure is deployed within a fully isolated **Host-Only Network**. This topology simulates a high-security "Dark Site" or air-gapped datacenter where servers have no physical or logical path to the public internet.
+
+#### **Network Specifications**
+
+* **Network Type:** Host-Only (VMware VMnet2)
+* **Subnet CIDR:** `192.168.70.0/24`
+* **Broadcast Address:** `192.168.70.255`
+* **Default Gateway:** None (Intentionally omitted to prevent internet routing).
+
+#### **IP Addressing Scheme**
+
+Static IP addresses were assigned to ensure consistent connectivity for cryptographic services (Kerberos/Tang) which rely on DNS stability.
+
+| Device Role | Hostname | IP Address | Description |
+| --- | --- | --- | --- |
+| **Management Host** | *Physical Laptop* | `192.168.70.1` | The "Jump Box" or Admin workstation. It is the only device capable of SSHing into the environment. |
+| **Control Plane** | `infra.chinmaytech.local` | `192.168.70.10` | The primary DNS and Identity server. |
+| **Workload Node** | `web01.chinmaytech.local` | `192.168.70.20` | The application server. |
 
 
