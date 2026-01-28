@@ -1,3 +1,11 @@
+
+# End to End Security Hardening Centralized Audit Vault for FinTech infrastructure
+
+### Designed a Zero Trust, secure and isolated Linux fintech infrastructure, separating the architecture into a Control Plane (Infra) and a Workload Node (Web Client). Enforced strict security controls requiring cryptographic authorization from the central infrastructure for all boot, operational, and data access activities, ensuring complete dependency on the secure core.
+ 
+
+
+
 ## 📑 Table of Contents
 
 **1. Project Overview**
@@ -9,7 +17,7 @@
 **2. System Architecture & Design**
 
 * 2.1 High-Level Architecture (The "Control Plane" vs. "Workload Node")
-* 2.2 Network Topology: The Air-Gapped Environment (192.168.70.0/24)
+* 2.2 Network Topology: The offline Environment (192.168.70.0/24)
 * 2.3 Component Breakdown (Infra Server vs. Web Client)
 * 2.4 Software & Tools Specification
 
@@ -65,13 +73,50 @@
 
 ------------------------------------------------------------
 
-### End to End Security Hardening Centralized Audit Vault for FinTech infrastructure
+# 1. Project Overview
+
+### 1.1 Introduction
+
+In modern enterprise environments, traditional "castle-and-moat" security models—where everything inside the network is trusted—are no longer sufficient. Sophisticated threats often originate from compromised internal nodes or stolen physical hardware.
+
+This project, **"End to End Security Hardening Centralized Audit Vault for FinTech infrastructure"** simulates a high-security, critical infrastructure environment typical of the Fintech or Defense sectors. By deploying a strictly **Offline** network, the project completely isolates sensitive data from the public internet. It utilizes **Red Hat Enterprise Linux 9 (RHEL 9)** to build a robust architecture that prioritizes identity governance, immutable logging, and automated encryption over convenience.
+
+### 1.2 Objective: Zero Trust & Centralized Security
+
+The primary objective is to implement a **Zero Trust Architecture (ZTA)** where no device is implicitly trusted, even if it is physically located inside the secure datacenter.
+
+The system is designed around two core security pillars:
+
+1. **Centralized Dependency:** The Workload Node (Web Client) is intentionally "helpless." It cannot resolve users, unlock its own hard drives, or store logs without active authorization from the Control Plane (Infra Server).
+2. **Cryptographic Verification:** Every interaction—whether it is a user logging in, a disk unlocking, or a file being shared—is verified using military-grade cryptography (Kerberos, LUKS, RSA).
+
+**Key Security Goals:**
+
+* **Data at Rest:** Ensure data on stolen physical disks is unreadable (via NBDE).
+* **Data in Transit:** Ensure network traffic cannot be sniffed or spoofed (via Kerberized NFS).
+* **Non-Repudiation:** Ensure that if a breach occurs, the attacker cannot delete the forensic evidence (via Remote Audit Logging).
+
+### 1.3 Scope of Work
+
+This project encompasses the full lifecycle of designing, deploying, and hardening a Linux infrastructure. The scope includes:
+
+* **Network Design:** Implementation of an isolated Host-Only network (`192.168.70.0/24`) with strict firewalling.
+* **Identity Management:** Deployment of Red Hat IdM (FreeIPA) for centralized authentication and policy enforcement.
+* **Storage Automation:** Configuration of Network Bound Disk Encryption (NBDE) using Tang and Clevis.
+* **Forensics Engineering:** Setup of `auditd` for deep system monitoring and `rsyslog` for centralized log aggregation.
+* **Vulnerability Testing:** Execution of simulated "theft" and "intrusion" scenarios to validate the security controls.
+
+**Out of Scope:**
+
+* Connecting the infrastructure to the public internet.
+* Deployment of user-facing web applications (the focus is on the *infrastructure*, not the website content).
+* Cloud-based integration (AWS/Azure) – this is strictly an on-premise simulation.
 
 ------------------------------------------------------------
 
-#### Designed a Zero Trust, secure and isolated Linux fintech infrastructure, separating the architecture into a Control Plane (Infra) and a Workload Node (Web Client). Enforced strict security controls requiring cryptographic authorization from the central infrastructure for all boot, operational, and data access activities, ensuring complete dependency on the secure core.
+# 2. System Architecture & Design
 
-------------------------------------------------------------
+### 2.1 High-Level Architecture (The "Control Plane" vs. "Workload Node")
 
 <p align="center">
   <img src="Architecture.png" width="850">
@@ -80,4 +125,5 @@
 <p align="center">
   <em>Isolated Zero Trust Architecture for FinTech Environment</em>
 </p>
+
 
