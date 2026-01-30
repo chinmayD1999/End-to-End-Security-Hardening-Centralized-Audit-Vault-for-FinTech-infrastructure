@@ -12,7 +12,7 @@
 * 1.2 Objective: Zero Trust & Centralized Security
 * 1.3 Scope of Work
 
-**2. [**2. System Architecture & Design**](#2System-Architecture-&-Design)
+[**2. System Architecture & Design**](#2System-Architecture-&-Design)
 
 * 2.1 High-Level Architecture (The "Control Plane" vs. "Workload Node")
 * 2.2 Network Topology: The offline Environment (192.168.70.0/24)
@@ -113,7 +113,7 @@ This project encompasses the full lifecycle of designing, deploying, and hardeni
 
 ------------------------------------------------------------
 
-# 2. System Architecture & Design
+## 2. System Architecture & Design
 
 ### 2.1 High-Level Architecture (The "Control Plane" vs. "Workload Node")
 
