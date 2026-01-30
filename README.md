@@ -113,7 +113,7 @@ This project encompasses the full lifecycle of designing, deploying, and hardeni
 
 ------------------------------------------------------------
 
-## 2. System Architecture & Design
+## 2.System Architecture & Design
 
 ### 2.1 High-Level Architecture (The "Control Plane" vs. "Workload Node")
 
