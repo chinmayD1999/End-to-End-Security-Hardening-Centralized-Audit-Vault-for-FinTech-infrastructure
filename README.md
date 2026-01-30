@@ -302,49 +302,29 @@ The **Web Client** was deployed as a minimal "consumer" node.
 
 Since the environment has no internet access, the servers cannot reach standard repositories like `cdn.redhat.com`. We solved this by creating a **Local Software Depot** on the Infra Server.
 
-1. **Mounting the Source:** We mounted the RHEL 9 Binary DVD ISO to the Infra Server.
-2. **Hosting the Content:** We installed the Apache Web Server (`httpd`) and copied the ISO contents to `/var/www/html/rhel9`.
-3. **Client Configuration:** We configured a custom `.repo` file on the Web Client to point to the Infra Server:
-```ini
-[local-baseos]
-name=Local BaseOS
-baseurl=http://192.168.70.10/rhel9/BaseOS
-enabled=1
-gpgcheck=1
+#### 3.4.1. Switch to Root (You will need your password)
+`su -`
 
-```
+#### 3.4.2. Create a directory to hold the disc data
+`mkdir -p /var/www/html/rhel9`
 
+#### 3.4.3. Mount the CDROM to that directory
+`mount /dev/cdrom /var/www/html/rhel9`
 
-4. **The Result:** The Web Client can now install software (e.g., `dnf install httpd`) by pulling packages directly from the Infra Server over the secure LAN.
+#### 3.4.4. Verify you see files (BaseOS and AppStream)
+`ls /var/www/html/rhel9`
 
-5. Step 2: Mount the Disc (Inside Linux)
-Open your Terminal on the Infra-Server and run these commands to "insert" the disc into the filesystem.
-Bash
-# 1. Switch to Root (You will need your password)
-su -
+#### 3.4.5. Web client server with custom repository
 
-# 2. Create a directory to hold the disc data
-mkdir -p /var/www/html/rhel9
+`ll create a new repository file.`
 
-# 3. Mount the CDROM to that directory
-mount /dev/cdrom /var/www/html/rhel9
-
-# 4. Verify you see files (BaseOS and AppStream)
-ls /var/www/html/rhel9
-
-Troubleshooting: If mount says "no medium found," check the VMware CD/DVD "Connected" checkbox again, then run mount again.
-Step 3: Configure the Local Repo
-Now we must tell this server: "Don't go to redhat.com for software. Look at the DVD instead."
-We will create a new repository file.
-Bash
-# 1. Disable all online repositories (if any exist)
+#### 3.4.6. Disable all online repositories (if any exist)
 rm -f /etc/yum.repos.d/*.repo
 
-# 2. Create the Local Repo file
-vi /etc/yum.repos.d/local.repo
+#### 3.4.7. Create the Local Repo file
+`vi /etc/yum.repos.d/local.repo`
 
-Press i to enter Insert Mode, then paste this EXACT text:
-Ini, TOML
+```ini
 [Local-BaseOS]
 name=RHEL 9 BaseOS
 baseurl=file:///var/www/html/rhel9/BaseOS
@@ -356,23 +336,21 @@ name=RHEL 9 AppStream
 baseurl=file:///var/www/html/rhel9/AppStream
 enabled=1
 gpgcheck=0
+```
 
-Save and Exit: Press Esc, then type :wq and hit Enter.
-Step 4: Install & Configure Apache (The "Server" Part)
-Now that the server can install software from the DVD, let's install the Web Server (httpd) so it can share these files with the Client VM later.
-Bash
-# 1. Clean the cache and list repos
-dnf clean all
-dnf repolist
-# (You should see 'Local-BaseOS' and 'Local-AppStream' listed with a green verification)
+#### 3.4.8. Install & Configure Apache (The "Server" Part)
 
-# 2. Install Apache
-dnf install httpd -y
+#### 3.4.8.1. Clean the cache and list repos
+`yum clean all`
+`yum repolist` --- (You should see 'Local-BaseOS' and 'Local-AppStream' listed with a green verification)
 
-# 3. Start Apache and make it run at boot
-systemctl enable --now httpd
+#### 3.4.8.2. Install Apache
+`yum install httpd -y`
 
-# 4. Open the Firewall (Port 80) so the Client can connect later
-firewall-cmd --permanent --add-service=http
-firewall-cmd --reload
+#### 3.4.8.3. Start Apache and make it run at boot
+`systemctl enable --now httpd`
+
+#### 3.4.8.4. Open the Firewall (Port 80) so the Client can connect later
+`firewall-cmd --permanent --add-service=http`
+`firewall-cmd --reload`
 
