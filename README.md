@@ -302,55 +302,116 @@ The **Web Client** was deployed as a minimal "consumer" node.
 
 Since the environment has no internet access, the servers cannot reach standard repositories like `cdn.redhat.com`. We solved this by creating a **Local Software Depot** on the Infra Server.
 
-#### 3.4.1. Switch to Root (You will need your password)
-`su -`
+```ini
+ISO / Synced RPMs
+        ↓
+   Repo Server
+ (Apache HTTP)
+        ↓
+ Internal Clients
+     (DNF/YUM)
+```
 
-#### 3.4.2. Create a directory to hold the disc data
-`mkdir -p /var/www/html/rhel9`
+### **3.4 Local Repository Configuration (HTTP/YUM)**
 
-#### 3.4.3. Mount the CDROM to that directory
-`mount /dev/cdrom /var/www/html/rhel9`
+Think of this as setting up a private grocery store for your Linux hosts. Shelves stocked once, customers fetch fast, no trips to the outside world 🏪🐧
 
-#### 3.4.4. Verify you see files (BaseOS and AppStream)
-`ls /var/www/html/rhel9`
+---
 
-#### 3.4.5. Web client server with custom repository
+## **Purpose**
 
-`ll create a new repository file.`
+Configure a **local YUM/DNF repository** served over **HTTP** so internal systems can install and update packages without internet access. Common in air-gapped, banking, or high-security environments.
 
-#### 3.4.6. Disable all online repositories (if any exist)
-rm -f /etc/yum.repos.d/*.repo
+---
 
-#### 3.4.7. Create the Local Repo file
-`vi /etc/yum.repos.d/local.repo`
+## **Architecture Flow**
+
+```
+ISO / Synced RPMs
+        ↓
+   Repo Server
+ (Apache HTTP)
+        ↓
+ Internal Clients
+     (DNF/YUM)
+```
+
+---
+
+## **Step 1: Prepare Repository Content**
+
+Mount ISO or sync RPMs to a directory:
+
+```ini
+mkdir -p /var/www/html/rhel9/BaseOS
+mkdir -p /var/www/html/rhel9/AppStream
+
+mount -o loop rhel-9.x-x86_64-dvd.iso /mnt
+cp -r /mnt/BaseOS/* /var/www/html/rhel9/BaseOS/
+cp -r /mnt/AppStream/* /var/www/html/rhel9/AppStream/
+```
+
+Generate metadata:
+
+```ini
+dnf install -y createrepo_c
+createrepo /var/www/html/rhel9/BaseOS
+createrepo /var/www/html/rhel9/AppStream
+```
+
+---
+
+## **Step 2: Configure HTTP Server**
+
+Install and start Apache:
+
+```ini
+dnf install -y httpd
+systemctl enable --now httpd
+```
+
+Firewall (if enabled):
+
+```ini
+firewall-cmd --permanent --add-service=http
+firewall-cmd --reload
+```
+
+Verify access:
+
+```ini
+http://<repo-server-ip>/rhel9/BaseOS/
+http://<repo-server-ip>/rhel9/AppStream/
+```
+
+---
+
+## **Step 3: Client-Side YUM Repository Configuration**
+
+Create repo file on client:
+
+```ini
+vi /etc/yum.repos.d/local.repo
+```
 
 ```ini
 [Local-BaseOS]
 name=RHEL 9 BaseOS
-baseurl=file:///var/www/html/rhel9/BaseOS
+baseurl=http://<repo-server-ip>/rhel9/BaseOS
 enabled=1
 gpgcheck=0
 
 [Local-AppStream]
 name=RHEL 9 AppStream
-baseurl=file:///var/www/html/rhel9/AppStream
+baseurl=http://<repo-server-ip>/rhel9/AppStream
 enabled=1
 gpgcheck=0
 ```
 
-#### 3.4.8. Install & Configure Apache (The "Server" Part)
+Clean and test:
 
-#### 3.4.8.1. Clean the cache and list repos
-`yum clean all`
-`yum repolist` --- (You should see 'Local-BaseOS' and 'Local-AppStream' listed with a green verification)
-
-#### 3.4.8.2. Install Apache
-`yum install httpd -y`
-
-#### 3.4.8.3. Start Apache and make it run at boot
-`systemctl enable --now httpd`
-
-#### 3.4.8.4. Open the Firewall (Port 80) so the Client can connect later
-`firewall-cmd --permanent --add-service=http`
-`firewall-cmd --reload`
-
+```ini
+dnf clean all
+dnf repolist
+dnf install vim -y
+```
