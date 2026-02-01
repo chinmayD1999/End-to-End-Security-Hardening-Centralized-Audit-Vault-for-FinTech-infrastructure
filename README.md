@@ -326,7 +326,7 @@ Configure a **local YUM/DNF repository** served over **HTTP** so internal system
 
 ## **Architecture Flow**
 
-```
+```ini
 ISO / Synced RPMs
         ↓
    Repo Server
@@ -343,12 +343,15 @@ ISO / Synced RPMs
 Mount ISO or sync RPMs to a directory:
 
 ```ini
-mkdir -p /var/www/html/rhel9/BaseOS
-mkdir -p /var/www/html/rhel9/AppStream
+# 2. Create a directory to hold the disc data
+mkdir -p /var/www/html/rhel9
 
-mount -o loop rhel-9.x-x86_64-dvd.iso /mnt
-cp -r /mnt/BaseOS/* /var/www/html/rhel9/BaseOS/
-cp -r /mnt/AppStream/* /var/www/html/rhel9/AppStream/
+# 3. Mount the CDROM to that directory
+mount /dev/cdrom /var/www/html/rhel9
+
+# 4. Verify you see files (BaseOS and AppStream)
+ls /var/www/html/rhel9
+
 ```
 
 Generate metadata:
@@ -415,3 +418,213 @@ dnf clean all
 dnf repolist
 dnf install vim -y
 ```
+
+**4. Phase 2: Centralized Identity Management (IAM)**
+
+Here is the drafted content for **Section 4: Phase 2 - Centralized Identity Management**. This section documents the transition from standalone servers to a managed "Zero Trust" domain architecture.
+
+---
+
+## 4. Phase 2: Centralized Identity Management (IAM)
+
+To eliminate the security risks associated with decentralized local accounts (e.g., weak passwords, orphaned accounts, lack of audit trails), we deployed **Red Hat Identity Management (IdM)**. This establishes a Single Source of Truth for all users, hosts, and authentication policies across the air-gapped environment.
+
+### 4.1 Installing Red Hat IdM (FreeIPA)
+
+We promoted the **Infra Server (`192.168.70.10`)** to serve as the Domain Controller for the environment. This replaces the standard `/etc/passwd` local files with a centralized LDAP directory and Kerberos Key Distribution Center (KDC).
+
+* **Software Stack:** `ipa-server`, `ipa-server-dns`, `389-ds` (Directory Server).
+* **Installation Command:**
+We initialized the realm using the interactive setup:
+```bash
+ipa-server-install --setup-dns
+
+```
+
+
+* **Configuration Parameters:**
+* **Realm Name:** `CHINMAYTECH.LOCAL` (The Kerberos authentication boundary)
+* **Domain Name:** `chinmaytech.local` (The DNS suffix)
+* **DNS Forwarders:** `no` (Explicitly disabled to maintain air-gap isolation)
+* **NetBIOS Name:** `CHINMAYTECH`
+
+
+
+### 4.2 Configuring DNS & User Policies
+
+Since the environment is isolated, the IdM server also acts as the authoritative **DNS Server**. This is critical because the Kerberos protocol relies on accurate DNS SRV records to locate authentication services.
+
+1. **DNS Configuration:**
+We manually created the A-record for the client to ensure the domain controller could resolve it before joining.
+```bash
+ipa dnsrecord-add chinmaytech.local web01 --a-rec=192.168.70.20
+
+```
+
+
+2. **User Provisioning:**
+We transitioned away from the root user by creating a named administrator account (`sysadmin`) for daily operations.
+```bash
+ipa user-add sysadmin --first=System --last=Admin --password
+
+```
+
+
+3. **Password Policy:**
+The system automatically enforced a strict global password policy (Minimum 8 characters, expiration set to 90 days) on the new user, ensuring compliance with security standards.
+
+### 4.3 Domain Joining the Web Client (SSSD)
+
+We connected the **Web Client (`192.168.70.20`)** to the domain, effectively turning it into a "managed node." This process configured the **System Security Services Daemon (SSSD)** to route all login requests to the Infra Server.
+
+* **Prerequisites:** Updated `/etc/resolv.conf` on the client to point to `192.168.70.10`.
+* **Join Command:**
+```bash
+ipa-client-install --mkhomedir --enable-dns-updates
+
+```
+
+
+* **`--mkhomedir`**: Configured PAM to automatically create a home directory for network users upon their first valid login.
+* **Result:** The Web Client no longer stores local password hashes. Authentication is now handled exclusively via Kerberos tickets over the network.
+
+
+
+### 4.4 Implementing HBAC (Host-Based Access Control)
+
+To strictly limit movement within the network ("Lateral Movement Prevention"), we utilized HBAC rules. This ensures that a valid username and password are **not sufficient** to access a server; the user must also satisfy a specific policy rule.
+
+1. **Enforcing "Deny by Default":**
+We disabled the default rule that allowed all users to access all hosts.
+```bash
+ipa hbacrule-disable allow_all
+
+```
+
+
+2. **Creating the "SysAdmin" Allow Rule:**
+We created a specific rule permitting *only* the System Administrators group to access the Web Client via SSH.
+* **Rule:** `allow_sysadmin_web`
+* **User Group:** `sysadmins`
+* **Host:** `web01.chinmaytech.local`
+* **Service:** `sshd`
+
+
+Here is the drafted content for **Section 5: Phase 3 - Zero-Trust Storage**. This section documents the implementation of Network-Bound Disk Encryption (NBDE), ensuring that sensitive data is encrypted at rest but automatically accessible *only* when the server is safely inside the secure network environment.
+
+---
+
+## 5. Phase 3: Zero-Trust Storage (NBDE & LUKS)
+
+To protect sensitive data against physical theft (e.g., a hard drive being removed from the datacenter), we implemented strict **Disk Encryption**. However, to avoid the operational bottleneck of typing a password manually every time a server reboots, we utilized **Network-Bound Disk Encryption (NBDE)**.
+
+This creates a dependency: **The data can only be decrypted if the Web Client can "see" the Infra Server.** If the server is stolen and taken off-site, it cannot contact the key server, and the data remains permanently locked.
+
+### 5.1 Deploying the Tang Server (Key Escrow)
+
+We configured the **Infra Server** to act as the "Tang" server. Tang is a stateless web service that advertises cryptographic keys to authorized clients.
+
+1. **Installation:**
+```bash
+[root@infra ~]# dnf install tang -y
+
+```
+
+
+2. **Port Configuration (Avoiding Conflict):**
+Since Port 80 is already used by our HTTP Repository, we configured Tang to listen on **Port 8080**.
+```bash
+systemctl edit tangd.socket
+# Added:
+# [Socket]
+# ListenStream=
+# ListenStream=8080
+
+```
+
+
+3. **Activation:**
+```bash
+systemctl enable --now tangd.socket
+firewall-cmd --add-port=8080/tcp --permanent
+firewall-cmd --reload
+
+```
+
+
+
+### 5.2 Creating the Encrypted Vault (LUKS2)
+
+On the **Web Client**, we utilized the free space reserved during the OS installation to create a new, encrypted partition for sensitive application logs.
+
+1. **Create the Partition:**
+We created a 5GB Logical Volume named `lv_vault`.
+```bash
+lvcreate -n lv_vault -L 5G vg_rhel
+
+```
+
+
+2. **Encrypt the Volume:**
+We initialized the volume with **LUKS2** encryption. This required setting a temporary manual passphrase (a "Recovery Key").
+```bash
+cryptsetup luksFormat /dev/vg_rhel/lv_vault
+
+```
+
+
+3. **Open and Format:**
+We unlocked the volume to create the filesystem.
+```bash
+cryptsetup luksOpen /dev/vg_rhel/lv_vault secure_vault
+mkfs.xfs /dev/mapper/secure_vault
+
+```
+
+
+4. **Mounting:**
+Mounted the secure volume to `/opt/secure_data`.
+
+### 5.3 Implementing Automated Unlocking (Clevis)
+
+We installed the **Clevis** client on the Web Client to "bind" the encrypted volume to the Tang server. This acts as the automated key turner.
+
+1. **Installation:**
+```bash
+[root@web01 ~]# dnf install clevis clevis-luks clevis-dracut -y
+
+```
+
+
+2. **Binding the Volume:**
+We ran the binding command, which links the LUKS volume to the Tang advertisement.
+```bash
+clevis luks bind -d /dev/vg_rhel/lv_vault tang '{"url":"http://192.168.70.10:8080"}'
+
+```
+
+
+* **Trust Mechanism:** The client downloaded the signing key from the Tang server and added it as a new "Keyslot" in the LUKS header.
+
+
+3. **Persistence:**
+We enabled `clevis-luks-askpass.path` to ensure this process runs automatically during boot.
+```bash
+systemctl enable clevis-luks-askpass.path
+
+```
+
+
+
+### 5.4 Verification (The "Pull the Plug" Test)
+
+To validate the Zero Trust architecture, we performed two boot tests:
+
+1. **The "Happy Path" (Network Connected):**
+* **Action:** Rebooted `web01` while connected to the internal LAN.
+* **Result:** Clevis contacted the Infra Server, retrieved the key, and unlocked `/opt/secure_data` automatically. The server booted without user intervention.
+
+
+2. **The "Theft Scenario" (Network Disconnected):**
+* **Action:** Disconnected the virtual network adapter on `web01` and rebooted.
+* **Result:** The boot process **paused indefinitely** at the encryption password prompt. Because the client could not reach `192.168.70.10:8080`, it refused to unlock the data, simulating total data protection in a theft scenario.
