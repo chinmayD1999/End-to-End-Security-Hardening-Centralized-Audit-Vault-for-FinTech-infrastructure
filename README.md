@@ -6,13 +6,13 @@
 
 ## 📑 Table of Contents
 
-[**1. Project Overview**](#1project-overview)
+**1. Project Overview**
 
 * 1.1 Introduction
 * 1.2 Objective: Zero Trust & Centralized Security
 * 1.3 Scope of Work
 
-[**2. System Architecture & Design**](#2System-Architecture-&-Design)
+**2. System Architecture & Design**
 
 * 2.1 High-Level Architecture (The "Control Plane" vs. "Workload Node")
 * 2.2 Network Topology: The offline Environment (192.168.70.0/24)
@@ -75,8 +75,6 @@
 
 
 ### 1.1 Introduction
-
-In modern enterprise environments, traditional "castle-and-moat" security models—where everything inside the network is trusted—are no longer sufficient. Sophisticated threats often originate from compromised internal nodes or stolen physical hardware.
 
 This project, **"End to End Security Hardening Centralized Audit Vault for FinTech infrastructure"** simulates a high-security, critical infrastructure environment typical of the Fintech or Defense sectors. By deploying a strictly **Offline** network, the project completely isolates sensitive data from the public internet. It utilizes **Red Hat Enterprise Linux 9 (RHEL 9)** to build a robust architecture that prioritizes identity governance, immutable logging, and automated encryption over convenience.
 
